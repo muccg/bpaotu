@@ -1,7 +1,7 @@
 
 import sys
 from django.core.management.base import BaseCommand
-from ...query import OTUQueryParams, ContextualFilter, OntologyInfo, SampleQuery
+from ...query import OTUQueryParams, ContextualFilter, OntologyInfo, SampleQuery, TaxonomyFilter
 from ...otu import OTUKingdom, OTUPhylum, OTUClass, Environment
 from ...biom import generate_biom_file
 from ...util import make_timestamp
@@ -23,8 +23,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         params = OTUQueryParams(
-            amplicon_filter=None,
-            contextual_filter=ContextualFilter('and', self.onto_is(Environment, 'Soil')),
+            contextual_filter=TaxonomyFilter(
+                None,
+                ContextualFilter('and', self.onto_is(Environment, 'Soil'))),
             taxonomy_filter=[
                 self.onto_is(OTUKingdom, 'Bacteria'),
                 self.onto_is(OTUPhylum, 'Bacteroidetes'),

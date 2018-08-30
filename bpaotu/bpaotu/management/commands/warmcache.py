@@ -1,6 +1,6 @@
 
 from django.core.management.base import BaseCommand
-from ...query import TaxonomyOptions, OntologyInfo, OTUQueryParams, CACHE_FOREVER, ContextualFilter
+from ...query import TaxonomyOptions, OntologyInfo, OTUQueryParams, CACHE_FOREVER, ContextualFilter, TaxonomyFilter
 from ...spatial import spatial_query
 from ...otu import OTUKingdom, OTUAmplicon
 from collections import OrderedDict
@@ -20,16 +20,16 @@ class Command(BaseCommand):
             for amplicon_id in self.amplicon_possibilities:
                 for kingdom_id in self.kingdom_possibilities:
                     q.possibilities(
-                        self.make_is(amplicon_id),
-                        [self.make_is(kingdom_id), None, None, None, None, None, None], force_cache=True)
+                        TaxonomyFilter(
+                            self.make_is(amplicon_id),
+                            [self.make_is(kingdom_id), None, None, None, None, None, None]), force_cache=True)
         print("Complete")
 
     def warm_map(self):
         print("Warming spatial cache")
         params = OTUQueryParams(
-            amplicon_filter=None,
             contextual_filter=ContextualFilter('and', None),
-            taxonomy_filter=[None, None, None, None, None, None, None])
+            taxonomy_filter=TaxonomyFilter(None, [None, None, None, None, None, None, None]))
         spatial_query(params, cache_duration=CACHE_FOREVER, force_cache=True)
         print("Complete")
 

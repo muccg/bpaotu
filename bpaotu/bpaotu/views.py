@@ -105,16 +105,16 @@ clean_amplicon_filter = get_operator_and_int_value
 clean_environment_filter = get_operator_and_int_value
 
 
-def clean_taxonomy_filter(state_vector):
+def make_clean_taxonomy_filter(amplicon_filter, state_vector):
     """
-    take a taxonomy filter (a list of phylum, kingdom, ...) and clean it
+    take an amplion filter and a  taxonomy filter
+    (a list of phylum, kingdom, ...) and clean it
     so that it is a simple list of ints or None of the correct length.
     """
-
     assert(len(state_vector) == len(TaxonomyOptions.hierarchy))
-    return TaxonomyFilter(list(map(
-        get_operator_and_int_value,
-        state_vector)))
+    return TaxonomyFilter(
+        clean_amplicon_filter(amplicon_filter),
+        list(map(get_operator_and_int_value, state_vector)))
 
 
 @require_CKAN_auth
@@ -137,9 +137,10 @@ def taxonomy_options(request):
     private API: given taxonomy constraints, return the possible options
     """
     with TaxonomyOptions() as options:
-        amplicon = clean_amplicon_filter(json.loads(request.GET['amplicon']))
-        selected = clean_taxonomy_filter(json.loads(request.GET['selected']))
-        possibilities = options.possibilities(amplicon, selected)
+        taxonomy_filter = make_clean_taxonomy_filter(
+            json.loads(request.GET['amplicon']),
+            json.loads(request.GET['selected']))
+        possibilities = options.possibilities(taxonomy_filter)
     return JsonResponse({
         'possibilities': possibilities
     })
@@ -223,8 +224,9 @@ def param_to_filters(query_str):
             return None
 
     otu_query = json.loads(query_str)
-    taxonomy_filter = clean_taxonomy_filter(otu_query['taxonomy_filters'])
-    amplicon_filter = clean_amplicon_filter(otu_query['amplicon_filter'])
+    taxonomy_filter = make_clean_taxonomy_filter(
+        otu_query['amplicon_filter'],
+        otu_query['taxonomy_filters'])
 
     context_spec = otu_query['contextual_filters']
     contextual_filter = ContextualFilter(context_spec['mode'], context_spec['environment'])
@@ -266,15 +268,15 @@ def param_to_filters(query_str):
             logger.critical("Exception parsing field: `%s':\n%s" % (field_name, traceback.format_exc()))
 
     return (OTUQueryParams(
-        amplicon_filter=amplicon_filter,
         contextual_filter=contextual_filter,
         taxonomy_filter=taxonomy_filter), errors)
 
 
 def param_to_filters_without_checks(query_str):
     otu_query = json.loads(query_str)
-    taxonomy_filter = clean_taxonomy_filter(otu_query['taxonomy_filters'])
-    amplicon_filter = clean_amplicon_filter(otu_query['amplicon_filter'])
+    taxonomy_filter = make_clean_taxonomy_filter(
+        otu_query['amplicon_filter'],
+        otu_query['taxonomy_filters'])
 
     context_spec = otu_query['contextual_filters']
     contextual_filter = ContextualFilter(context_spec['mode'], context_spec['environment'])
@@ -282,7 +284,6 @@ def param_to_filters_without_checks(query_str):
     errors = []
 
     return (OTUQueryParams(
-        amplicon_filter=amplicon_filter,
         contextual_filter=contextual_filter,
         taxonomy_filter=taxonomy_filter), errors)
 

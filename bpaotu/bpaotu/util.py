@@ -4,6 +4,10 @@ from hashlib import sha256
 import os
 import datetime
 import tempfile
+import logging
+
+
+logger = logging.getLogger("rainbow")
 
 
 def strip_to_ascii(s):

@@ -33,8 +33,7 @@ CACHE_7DAYS = (60 * 60 * 24 * 7)
 
 
 class OTUQueryParams:
-    def __init__(self, amplicon_filter, contextual_filter, taxonomy_filter):
-        self.amplicon_filter = amplicon_filter
+    def __init__(self, contextual_filter, taxonomy_filter):
         self.contextual_filter = contextual_filter
         self.taxonomy_filter = taxonomy_filter
         # for use by caching, should be a stable state summary
@@ -50,8 +49,7 @@ class OTUQueryParams:
     def __repr__(self):
         # Note: used for caching, so make sure all components have a defined
         # representation that's stable over time
-        return 'OTUQueryParams<{},{},{}>'.format(
-            self.amplicon_filter,
+        return 'OTUQueryParams<{},{}>'.format(
             self.contextual_filter,
             self.taxonomy_filter)
 
@@ -76,21 +74,20 @@ class TaxonomyOptions:
     def __exit__(self, exec_type, exc_value, traceback):
         self._session.close()
 
-    def possibilities(self, amplicon, state, force_cache=False):
+    def possibilities(self, taxonomy_filter, force_cache=False):
         cache = caches['search_results']
         key = make_cache_key(
             'TaxonomyOptions.possibilities',
-            amplicon,
-            state)
+            taxonomy_filter)
         result = None
         if not force_cache:
             result = cache.get(key)
         if result is None:
-            result = self._possibilities(amplicon, state)
+            result = self._possibilities(taxonomy_filter)
             cache.set(key, result, CACHE_FOREVER)
         return result
 
-    def _possibilities(self, amplicon, state):
+    def _possibilities(self, taxonomy_filter):
         """
         state should be a list of integer IDs for the relevent model, in the order of
         TaxonomyOptions.hierarchy. a value of None indicates there is no selection.
@@ -103,7 +100,7 @@ class TaxonomyOptions:
         def determine_target():
             # this query is built up over time, and validates the hierarchy provided to us
             q = self._session.query(OTU.kingdom_id).group_by(OTU.kingdom_id)
-            q = apply_amplicon_filter(q, amplicon)
+            q = apply_amplicon_filter(q, taxonomy_filter.amplicon_filter)
             for idx, ((otu_attr, ontology_class), taxonomy) in enumerate(zip(TaxonomyOptions.hierarchy, state)):
                 valid = True
                 if taxonomy is None or taxonomy.get('value') is None:
@@ -115,6 +112,8 @@ class TaxonomyOptions:
                     return otu_attr, ontology_class, idx
             return None, None, None
 
+        state = taxonomy_filter.state_vector.copy()
+
         # scan through in order and find our target, by finding the first invalid selection
         target_attr, target_class, target_idx = determine_target()
         # the targets to be reset as a result of this choice
@@ -124,7 +123,7 @@ class TaxonomyOptions:
         if target_attr is None:
             return {}
         # performance: hard-code kingdom (it's the slowest query, and the most common)
-        elif not amplicon and target_class is OTUKingdom:
+        elif not taxonomy_filter.amplicon_filter and target_class is OTUKingdom:
             possibilities = self._session.query(target_class.id, target_class.value).all()
         else:
             # clear invalidated part of the state
@@ -132,7 +131,7 @@ class TaxonomyOptions:
             # build up a query of the OTUs for our target attribute
             q = self._session.query(getattr(OTU, target_attr), target_class.value).group_by(getattr(OTU, target_attr), target_class.value).order_by(target_class.value)
 
-            q = apply_amplicon_filter(q, amplicon)
+            q = apply_amplicon_filter(q, taxonomy_filter.amplicon_filter)
             for (otu_attr, ontology_class), taxonomy in zip(TaxonomyOptions.hierarchy, state):
                 q = apply_otu_filter(otu_attr, q, taxonomy)
             q = q.join(target_class)
@@ -175,7 +174,6 @@ class SampleQuery:
         # amplicon filter is a master filter over the taxonomy; it's not
         # a strict part of the hierarchy, but affects taxonomy options
         # available
-        self._amplicon_filter = params.amplicon_filter
         self._taxonomy_filter = params.taxonomy_filter
         self._contextual_filter = params.contextual_filter
 
@@ -190,7 +188,6 @@ class SampleQuery:
         key = make_cache_key(
             'SampleQuery._q_all_cached',
             topic,
-            self._amplicon_filter,
             self._taxonomy_filter,
             self._contextual_filter)
         result = cache.get(key)
@@ -276,7 +273,7 @@ class SampleQuery:
         q = self._session.query(*args) \
             .filter(OTU.id == SampleOTU.otu_id) \
             .filter(SampleContext.id == SampleOTU.sample_id)
-        q = self._apply_taxonomy_filters(q)
+        q = self._taxonomy_filter.apply(q)
         q = self._contextual_filter.apply(q)
         if kingdom_id is not None:
             q = q.filter(OTU.kingdom_id == kingdom_id)
@@ -286,25 +283,18 @@ class SampleQuery:
         # it can be iterated over
         return q
 
-    def _apply_taxonomy_filters(self, q):
-        q = apply_amplicon_filter(q, self._amplicon_filter)
-        for (otu_attr, ontology_class), taxonomy in zip(TaxonomyOptions.hierarchy, self._taxonomy_filter):
-            q = apply_otu_filter(otu_attr, q, taxonomy)
-        return q
-
     def _build_taxonomy_subquery(self):
         """
         return the BPA IDs (as ints) which have a non-zero OTU count for OTUs
         matching the taxonomy filter
         """
-        # shortcut: if we don't have any filters, don't produce a subquery
-        if not self._amplicon_filter and self._taxonomy_filter[0] is None:
+        if self._taxonomy_filter.is_empty():
             return None
         q = self._session.query(SampleOTU.sample_id) \
             .distinct() \
             .join(OTU) \
             .filter(OTU.id == SampleOTU.otu_id)
-        return self._apply_taxonomy_filters(q)
+        return self._taxonomy_filter.apply(q)
 
     def _build_contextual_subquery(self):
         """
@@ -347,15 +337,30 @@ class SampleQuery:
         if contextual_subquery is not None:
             q = q.filter(OTU.id.in_(contextual_subquery))
         # apply taxonomic filter terms
-        q = self._apply_taxonomy_filters(q)
+        q = self._taxonomy_filter.apply(q)
         if kingdom_id is not None:
             q = q.filter(OTU.kingdom_id == kingdom_id)
         return q
 
 
 class TaxonomyFilter:
-    def __init__(self, state_vector):
+    def __init__(self, amplicon_filter, state_vector):
+        self.amplicon_filter = amplicon_filter
         self.state_vector = state_vector
+
+    def is_empty(self):
+        return not self.amplicon_filter and self.state_vector[0] is None
+
+    def apply(self, q):
+        q = apply_amplicon_filter(q, self.amplicon_filter)
+        for (otu_attr, ontology_class), taxonomy in zip(TaxonomyOptions.hierarchy, self.state_vector):
+            q = apply_otu_filter(otu_attr, q, taxonomy)
+        return q
+
+    def __repr__(self):
+        return '<TaxonomyFilter(%s,state_vec[%s])>' % (
+            self.amplicon_filter,
+            self.state_vector)
 
 
 class ContextualFilter:
