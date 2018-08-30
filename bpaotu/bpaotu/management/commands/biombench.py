@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand
 from ...query import OTUQueryParams, ContextualFilter, OntologyInfo, SampleQuery
 from ...otu import OTUKingdom, OTUPhylum, OTUClass, Environment
 from ...biom import generate_biom_file
+from ...util import make_timestamp
 from collections import OrderedDict
 
 
@@ -32,6 +33,13 @@ class Command(BaseCommand):
                 None,
                 None,
                 None])
+
+        timestamp = make_timestamp()
+        print(params.filename(timestamp, '.biom.zip'))
+        print(params.summary())
+        print(params.description())
+
+        return
 
         with SampleQuery(params) as query:
             size = 0

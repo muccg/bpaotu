@@ -41,7 +41,11 @@ class OTUQueryParams:
         self.state_key = make_cache_key(repr(self))
 
     def filename(self, timestamp, extension):
-        return 'BiomExport-{}.{}'.format(timestamp, extension)
+        return 'AustralianMicrobiome-{}{}'.format(timestamp, extension)
+
+    def summary(self, max_chars=100):
+        # a short title, maximum length `max_chars`
+        parts = ['Australian Microbiome: ']
 
     def __repr__(self):
         # Note: used for caching, so make sure all components have a defined
@@ -347,6 +351,11 @@ class SampleQuery:
         if kingdom_id is not None:
             q = q.filter(OTU.kingdom_id == kingdom_id)
         return q
+
+
+class TaxonomyFilter:
+    def __init__(self, state_vector):
+        self.state_vector = state_vector
 
 
 class ContextualFilter:

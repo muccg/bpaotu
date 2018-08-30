@@ -34,6 +34,7 @@ from .query import (
     ContextualFilterTermOntology,
     ContextualFilterTermSampleID,
     ContextualFilterTermString,
+    TaxonomyFilter,
     get_sample_ids)
 from django.template import loader
 from .models import (
@@ -41,7 +42,8 @@ from .models import (
     ImportOntologyLog,
     ImportSamplesMissingMetadataLog)
 from .util import (
-    display_name)
+    display_name,
+    make_timestamp)
 from .biom import biom_zip_file_generator
 from .tabular import tabular_zip_file_generator
 from . import tasks
@@ -110,9 +112,9 @@ def clean_taxonomy_filter(state_vector):
     """
 
     assert(len(state_vector) == len(TaxonomyOptions.hierarchy))
-    return list(map(
+    return TaxonomyFilter(list(map(
         get_operator_and_int_value,
-        state_vector))
+        state_vector)))
 
 
 @require_CKAN_auth
@@ -396,11 +398,11 @@ def otu_search(request):
 @require_CKAN_auth
 @require_GET
 def otu_biom_export(request):
-    timestamp = datetime.datetime.now().replace(microsecond=0).isoformat().replace(':', '')
+    timestamp = make_timestamp()
     params, errors = param_to_filters(request.GET['q'])
     zf = biom_zip_file_generator(params, timestamp)
     response = StreamingHttpResponse(zf, content_type='application/zip')
-    filename = params.filename(timestamp, 'biom.zip')
+    filename = params.filename(timestamp, '.biom.zip')
     response['Content-Disposition'] = 'attachment; filename="%s"' % filename
     return response
 
@@ -416,10 +418,11 @@ def otu_export(request):
       - an CSV of all the contextual data samples matching the query
       - an CSV of all the OTUs matching the query, with counts against Sample IDs
     """
+    timestamp = make_timestamp()
     params, errors = param_to_filters(request.GET['q'])
     zf = tabular_zip_file_generator(params)
     response = StreamingHttpResponse(zf, content_type='application/zip')
-    filename = "BPASearchResultsExport.zip"
+    filename = params.filename(timestamp, '-csv.zip')
     response['Content-Disposition'] = 'attachment; filename="%s"' % filename
     return response
 

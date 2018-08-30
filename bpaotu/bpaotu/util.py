@@ -2,6 +2,7 @@ from contextlib import contextmanager, suppress
 from .models import ImportMetadata
 from hashlib import sha256
 import os
+import datetime
 import tempfile
 
 
@@ -51,3 +52,10 @@ def display_name(field_name):
     if field_name.endswith('_id'):
         field_name = field_name[:-3]
     return ' '.join(((t[0].upper() + t[1:]) for t in field_name.split('_')))
+
+
+def make_timestamp():
+    """
+    returns a timestamp, suitable for use in a filename
+    """
+    return datetime.datetime.now().replace(microsecond=0).isoformat().replace(':', '')
