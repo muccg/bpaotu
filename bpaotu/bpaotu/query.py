@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker, aliased
 from django.core.cache import caches
 
 from .otu import (
+    Environment,
     OTU,
     OTUAmplicon,
     OTUKingdom,
@@ -45,14 +46,14 @@ class OTUQueryParams:
 
     def summary(self, max_chars=100):
         # a short title, maximum length `max_chars`
-        parts = ['Australian Microbiome: ']
+        parts = ['Australian Microbiome:']
         amplicon_descr, taxonomy_descr = self.taxonomy_filter.describe()
         if amplicon_descr is not None:
             parts.append(amplicon_descr)
         if taxonomy_descr:
-            print(taxonomy_descr)
             parts.append(taxonomy_descr[-1])
-        return parts
+        parts.append(self.contextual_filter.describe())
+        return ' '.join(parts)
 
     def __repr__(self):
         # Note: used for caching, so make sure all components have a defined
@@ -368,15 +369,10 @@ class TaxonomyFilter:
 
     def describe(self):
         with OntologyInfo() as info:
-            def describe_op_and_val(attr, cls, q):
-                if q is None:
-                    return None
-                return ' '.join(([attr[:-3], q.get('operator'), info.id_to_value(cls, q.get('value'))]))
-
-            amplicon_description = describe_op_and_val('amplicon_id', OTUAmplicon, self.amplicon_filter)
+            amplicon_description = describe_op_and_val(info, 'amplicon_id', OTUAmplicon, self.amplicon_filter)
             taxonomy_descriptions = []
             for (otu_attr, ontology_class), taxonomy in zip(TaxonomyOptions.hierarchy, self.state_vector):
-                descr = describe_op_and_val(otu_attr, ontology_class, taxonomy)
+                descr = describe_op_and_val(info, otu_attr, ontology_class, taxonomy)
                 if descr:
                     taxonomy_descriptions.append(descr)
             return amplicon_description, taxonomy_descriptions
@@ -410,6 +406,14 @@ class ContextualFilter:
 
     def __repr__(self):
         return '<ContextualFilter(%s,env[%s],[%s]>' % (self.mode, repr(self.environment_filter), ','.join(repr(t) for t in self.terms))
+
+    def describe(self):
+        descr = []
+        with OntologyInfo() as info:
+            env_descr = describe_op_and_val(info, 'environment_id', Environment, self.environment_filter)
+            descr.append(env_descr)
+            descr += [term.describe() for term in self.terms]
+        return ' '.join(descr)
 
     def is_empty(self):
         return len(self.terms) == 0 and not self.environment_filter
@@ -530,6 +534,18 @@ def get_sample_ids():
     ids = [t[0] for t in session.query(SampleContext.id).all()]
     session.close()
     return ids
+
+
+OP_DESCR = {
+    'is': '=',
+    'isnot': '!=',
+}
+
+
+def describe_op_and_val(ontology_info, attr, cls, q):
+    if q is None:
+        return None
+    return ''.join(([attr[:-3], OP_DESCR[q.get('operator')], ontology_info.id_to_value(cls, q.get('value'))]))
 
 
 def apply_op_and_val_filter(attr, q, op_and_val):
