@@ -45,6 +45,7 @@ class OTUQueryParams:
     def summary(self, max_chars=100):
         # a short title, maximum length `max_chars`
         parts = ['Australian Microbiome: ']
+        return ''.join(parts)
 
     def __repr__(self):
         # Note: used for caching, so make sure all components have a defined
@@ -161,6 +162,12 @@ class OntologyInfo:
         vals = self._session.query(ontology_class.id, ontology_class.value).all()
         vals.sort(key=lambda v: v[1])
         return vals
+
+    def id_to_value(self, ontology_class, _id):
+        return self._session.query(ontology_class.value).filter(ontology_class.id == _id).one()[0]
+
+    def value_to_id(self, ontology_class, value):
+        return self._session.query(ontology_class.id).filter(ontology_class.value == value).one()[0]
 
 
 class SampleQuery:

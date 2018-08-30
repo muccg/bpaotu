@@ -19,28 +19,25 @@ class Command(BaseCommand):
     @classmethod
     def onto_is(cls, taxo_cls, s):
         with OntologyInfo() as info:
-            return cls.make_is([i for (i, t) in info.get_values(taxo_cls) if t == s][0])
+            return cls.make_is(info.value_to_id(taxo_cls, s))
 
     def handle(self, *args, **kwargs):
         params = OTUQueryParams(
-            contextual_filter=TaxonomyFilter(
-                None,
-                ContextualFilter('and', self.onto_is(Environment, 'Soil'))),
-            taxonomy_filter=[
-                self.onto_is(OTUKingdom, 'Bacteria'),
-                self.onto_is(OTUPhylum, 'Bacteroidetes'),
-                self.onto_is(OTUClass, 'Ignavibacteria'),
-                None,
-                None,
-                None,
-                None])
+            contextual_filter=ContextualFilter(
+                'and', self.onto_is(Environment, 'Soil')),
+            taxonomy_filter=TaxonomyFilter(
+                None, [
+                    self.onto_is(OTUKingdom, 'Bacteria'),
+                    self.onto_is(OTUPhylum, 'Bacteroidetes'),
+                    self.onto_is(OTUClass, 'Ignavibacteria'),
+                    None,
+                    None,
+                    None,
+                    None]))
 
         timestamp = make_timestamp()
         print(params.filename(timestamp, '.biom.zip'))
         print(params.summary())
-        print(params.description())
-
-        return
 
         with SampleQuery(params) as query:
             size = 0
