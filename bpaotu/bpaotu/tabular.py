@@ -59,6 +59,14 @@ def contextual_csv(samples):
         return csv_fd.getvalue()
 
 
+def info_text(params):
+    return """\
+# Australian Microbiome OTU Database - tabular export
+
+{}
+""".format(params.describe()).encode('utf8')
+
+
 def tabular_zip_file_generator(params):
     zf = zipstream.ZipFile(mode='w', compression=zipstream.ZIP_DEFLATED)
     with SampleQuery(params) as query:
@@ -99,6 +107,7 @@ def tabular_zip_file_generator(params):
                 fd.truncate(0)
 
         zf.writestr('contextual.csv', contextual_csv(query.matching_samples()).encode('utf8'))
+        zf.writestr('info.txt', info_text(params))
         with OntologyInfo() as info:
             for kingdom_id, kingdom_label in info.get_values(OTUKingdom):
                 if not query.has_matching_sample_otus(kingdom_id):

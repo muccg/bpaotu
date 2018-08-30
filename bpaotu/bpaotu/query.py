@@ -55,6 +55,42 @@ class OTUQueryParams:
         parts.append(self.contextual_filter.describe())
         return ' '.join(parts)
 
+    def describe(self, max_chars=100):
+        "a short title, maximum length `max_chars`"
+
+        parts = []
+        amplicon_descr, taxonomy_descr = self.taxonomy_filter.describe()
+
+        def add_section(lines):
+            parts.append('\n'.join(lines))
+
+        def amplicon_section():
+            p = ['## Amplicon filter', '']
+            if amplicon_descr is not None:
+                p.append(amplicon_descr)
+            else:
+                p.append('(no amplicon filter applied)')
+            return p
+
+        def taxonomy_section():
+            p = ['## Taxonomy filter', '']
+            if taxonomy_descr:
+                p += taxonomy_descr
+            else:
+                p.append('(no taxonomy filter applied)')
+            return p
+
+        def contextual_section():
+            p = ['## Contextual filter', '']
+            p.append(self.contextual_filter.describe())
+            return p
+
+        add_section(amplicon_section())
+        add_section(taxonomy_section())
+        add_section(contextual_section())
+
+        return '\n\n'.join(parts)
+
     def __repr__(self):
         # Note: used for caching, so make sure all components have a defined
         # representation that's stable over time
@@ -413,7 +449,7 @@ class ContextualFilter:
             env_descr = describe_op_and_val(info, 'environment_id', Environment, self.environment_filter)
             descr.append(env_descr)
             descr += [term.describe() for term in self.terms]
-        return ' '.join(descr)
+        return ' '.join(t for t in descr if t)
 
     def is_empty(self):
         return len(self.terms) == 0 and not self.environment_filter
