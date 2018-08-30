@@ -38,6 +38,7 @@ class Command(BaseCommand):
         timestamp = make_timestamp()
         print(params.filename(timestamp, '.biom.zip'))
         print(params.summary())
+        return
 
         with SampleQuery(params) as query:
             size = 0

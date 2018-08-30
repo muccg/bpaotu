@@ -11,6 +11,7 @@ from django.core.cache import caches
 
 from .otu import (
     OTU,
+    OTUAmplicon,
     OTUKingdom,
     OTUPhylum,
     OTUClass,
@@ -45,7 +46,13 @@ class OTUQueryParams:
     def summary(self, max_chars=100):
         # a short title, maximum length `max_chars`
         parts = ['Australian Microbiome: ']
-        return ''.join(parts)
+        amplicon_descr, taxonomy_descr = self.taxonomy_filter.describe()
+        if amplicon_descr is not None:
+            parts.append(amplicon_descr)
+        if taxonomy_descr:
+            print(taxonomy_descr)
+            parts.append(taxonomy_descr[-1])
+        return parts
 
     def __repr__(self):
         # Note: used for caching, so make sure all components have a defined
@@ -164,9 +171,13 @@ class OntologyInfo:
         return vals
 
     def id_to_value(self, ontology_class, _id):
+        if _id is None:
+            return None
         return self._session.query(ontology_class.value).filter(ontology_class.id == _id).one()[0]
 
     def value_to_id(self, ontology_class, value):
+        if value is None:
+            return None
         return self._session.query(ontology_class.id).filter(ontology_class.value == value).one()[0]
 
 
@@ -354,6 +365,21 @@ class TaxonomyFilter:
     def __init__(self, amplicon_filter, state_vector):
         self.amplicon_filter = amplicon_filter
         self.state_vector = state_vector
+
+    def describe(self):
+        with OntologyInfo() as info:
+            def describe_op_and_val(attr, cls, q):
+                if q is None:
+                    return None
+                return ' '.join(([attr[:-3], q.get('operator'), info.id_to_value(cls, q.get('value'))]))
+
+            amplicon_description = describe_op_and_val('amplicon_id', OTUAmplicon, self.amplicon_filter)
+            taxonomy_descriptions = []
+            for (otu_attr, ontology_class), taxonomy in zip(TaxonomyOptions.hierarchy, self.state_vector):
+                descr = describe_op_and_val(otu_attr, ontology_class, taxonomy)
+                if descr:
+                    taxonomy_descriptions.append(descr)
+            return amplicon_description, taxonomy_descriptions
 
     def is_empty(self):
         return not self.amplicon_filter and self.state_vector[0] is None
