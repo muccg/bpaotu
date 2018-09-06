@@ -87,7 +87,7 @@ def otu_rows(query, otu_to_row):
         taxonomy_array = [get_value(f) for f in taxonomy_fields]
         blast_meta = query._blast_filter.get(otu.id)
         metadata = [('amplicon', get_value('amplicon')), ('taxonomy', taxonomy_array)]
-        metadata += [(t, blast_meta[t]) for t in BLASTFilter.BLAST_FIELDS]
+        metadata += [(t, blast_meta[t]) for t in BLASTFilter.BLAST_FIELDS.keys()]
         yield '{"id": "%s","metadata": {%s}}' % (
             otu.code,
             ','.join(k_v(*t) for t in metadata))
