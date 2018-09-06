@@ -12,6 +12,7 @@ from .query import (
     OntologyInfo)
 from .util import val_or_empty, make_timestamp
 from .otu import SampleContext
+from .blast import BLASTFilter
 
 logger = logging.getLogger('rainbow')
 
@@ -74,7 +75,7 @@ def biom_header():
 
 def otu_rows(query, otu_to_row):
     q = query.matching_otus()
-    taxonomy_fields = ('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
+    taxonomy_fields = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species']
 
     for idx, otu in enumerate(q.yield_per(50)):
         def get_value(attr):
@@ -84,10 +85,12 @@ def otu_rows(query, otu_to_row):
 
         otu_to_row[otu.id] = idx
         taxonomy_array = [get_value(f) for f in taxonomy_fields]
-        yield '{"id": "%s","metadata": {%s,%s}}' % (
+        blast_meta = query._blast_filter.get(otu.id)
+        metadata = [('amplicon', get_value('amplicon')), ('taxonomy', taxonomy_array)]
+        metadata += [(t, blast_meta[t]) for t in BLASTFilter.BLAST_FIELDS]
+        yield '{"id": "%s","metadata": {%s}}' % (
             otu.code,
-            k_v('amplicon', get_value('amplicon')),
-            k_v('taxonomy', taxonomy_array))
+            ','.join(k_v(*t) for t in metadata))
 
 
 def sample_columns(query, sample_to_column):

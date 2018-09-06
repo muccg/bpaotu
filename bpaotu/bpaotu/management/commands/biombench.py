@@ -43,6 +43,8 @@ class Command(BaseCommand):
 
         with SampleQuery(params) as query:
             size = 0
-            for data in (s.encode('utf8') for s in generate_biom_file(query)):
-                size += len(data)
-            print('BIOM output complete, total size={:,}'.format(size), file=sys.stderr)
+            with open('/data/blasted.biom', 'wb') as fd:
+                for data in (s.encode('utf8') for s in generate_biom_file(query)):
+                    size += len(data)
+                    fd.write(data)
+                print('BIOM output complete, total size={:,}'.format(size), file=sys.stderr)
