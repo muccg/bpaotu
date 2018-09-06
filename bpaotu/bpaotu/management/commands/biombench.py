@@ -5,6 +5,7 @@ from ...query import OTUQueryParams, ContextualFilter, OntologyInfo, SampleQuery
 from ...otu import OTUKingdom, OTUPhylum, OTUClass, Environment
 from ...biom import generate_biom_file
 from ...util import make_timestamp
+from ...blast import BLASTFilter
 from collections import OrderedDict
 
 
@@ -25,11 +26,12 @@ class Command(BaseCommand):
         params = OTUQueryParams(
             contextual_filter=ContextualFilter(
                 'and', self.onto_is(Environment, 'Soil')),
+            blast_filter=BLASTFilter('/data/results.tsv'),
             taxonomy_filter=TaxonomyFilter(
                 None, [
-                    self.onto_is(OTUKingdom, 'Bacteria'),
-                    self.onto_is(OTUPhylum, 'Bacteroidetes'),
-                    self.onto_is(OTUClass, 'Ignavibacteria'),
+                    None,
+                    None,
+                    None,
                     None,
                     None,
                     None,
@@ -38,7 +40,6 @@ class Command(BaseCommand):
         timestamp = make_timestamp()
         print(params.filename(timestamp, '.biom.zip'))
         print(params.summary())
-        return
 
         with SampleQuery(params) as query:
             size = 0

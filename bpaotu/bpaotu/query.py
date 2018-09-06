@@ -35,9 +35,10 @@ CACHE_7DAYS = (60 * 60 * 24 * 7)
 
 
 class OTUQueryParams:
-    def __init__(self, contextual_filter, taxonomy_filter):
+    def __init__(self, contextual_filter, taxonomy_filter, blast_filter):
         self.contextual_filter = contextual_filter
         self.taxonomy_filter = taxonomy_filter
+        self.blast_filter = blast_filter
         # for use by caching, should be a stable state summary
         self.state_key = make_cache_key(repr(self))
 
@@ -231,6 +232,7 @@ class SampleQuery:
         # available
         self._taxonomy_filter = params.taxonomy_filter
         self._contextual_filter = params.contextual_filter
+        self._blast_filter = params.blast_filter
 
     def __enter__(self):
         return self
@@ -329,6 +331,7 @@ class SampleQuery:
             .filter(OTU.id == SampleOTU.otu_id) \
             .filter(SampleContext.id == SampleOTU.sample_id)
         q = self._taxonomy_filter.apply(q)
+        q = q.filter(OTU.id.in_(self._blast_filter.get_otu_ids()))
         q = self._contextual_filter.apply(q)
         if kingdom_id is not None:
             q = q.filter(OTU.kingdom_id == kingdom_id)
@@ -343,12 +346,13 @@ class SampleQuery:
         return the BPA IDs (as ints) which have a non-zero OTU count for OTUs
         matching the taxonomy filter
         """
-        if self._taxonomy_filter.is_empty():
-            return None
+#        if self._taxonomy_filter.is_empty():
+#            return None
         q = self._session.query(SampleOTU.sample_id) \
             .distinct() \
             .join(OTU) \
-            .filter(OTU.id == SampleOTU.otu_id)
+            .filter(OTU.id == SampleOTU.otu_id) \
+            .filter(OTU.id.in_(self._blast_filter.get_otu_ids()))
         return self._taxonomy_filter.apply(q)
 
     def _build_contextual_subquery(self):
@@ -393,6 +397,7 @@ class SampleQuery:
             q = q.filter(OTU.id.in_(contextual_subquery))
         # apply taxonomic filter terms
         q = self._taxonomy_filter.apply(q)
+        q = q.filter(OTU.id.in_(self._blast_filter.get_otu_ids()))
         if kingdom_id is not None:
             q = q.filter(OTU.kingdom_id == kingdom_id)
         return q
