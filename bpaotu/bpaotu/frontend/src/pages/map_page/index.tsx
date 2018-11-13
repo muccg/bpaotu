@@ -4,7 +4,7 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
 import SamplesMap from '../../components/samples_map';
-import { fetchSampleMapSamples } from './reducers';
+import { fetchSampleMapSamples, fetchSampleMapImages } from './reducers';
 
 const MapPage = props => {
     const mapContainerHeight = window.innerHeight - 220 * 2 + 'px';
@@ -14,7 +14,7 @@ const MapPage = props => {
 
     return (
         <div style={{ height: mapContainerHeight }}>
-            <SamplesMap fetchSamples={fetchSamples} isLoading={props.isLoading} markers={props.markers} />
+            <SamplesMap fetchSamples={fetchSamples} fetchSampleImages={fetchSampleMapImages} isLoading={props.isLoading} markers={props.markers} />
         </div>
     );
 };
@@ -29,7 +29,7 @@ function mapStateToProps(state) {
 function mapDispatchToProps(dispatch) {
     return bindActionCreators({
         fetchSamples: fetchSampleMapSamples,
-        // fetchSampleImages
+        fetchSampleImages: fetchSampleMapImages
     }, dispatch);
 }
 

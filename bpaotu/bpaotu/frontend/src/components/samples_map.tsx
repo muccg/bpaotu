@@ -35,9 +35,11 @@ const ArcGIS = {
 
 class BPAImages extends React.Component<any, any> {
     public componentDidMount() {
-        console.log('hello world');
-      // this.setUpMiniMap()
-      // this.props.fetchImage(this.props.lat, this.props.lng)
+        // this.props.fetchImages(this.props.index, this.props.lat, this.props.lng)
+        console.log('hello world')
+        console.log(
+        //this.props.fetchImages(this.props.index, '-32.8200333333', '116.4136333333')
+    );
     }
 
     public render() {
@@ -45,7 +47,7 @@ class BPAImages extends React.Component<any, any> {
             <div>
                 {this.props.lat}
                 {this.props.lng}
-                Foobarbaz
+                <img src="/process_img/-27.387121/152.87905/0/" />
             </div>
         )
     }
@@ -145,7 +147,7 @@ export default class SamplesMap extends React.Component<any> {
                   <div>
                       <BPASamples bpadata={marker.bpadata} />
                       <hr />
-                      <BPAImages lat={this.state.lat} lng={this.state.lng} />
+                      <BPAImages fetchImages={marker.image_urls} />
                   </div>
                 </Popup>
               </Marker>
@@ -158,6 +160,7 @@ export default class SamplesMap extends React.Component<any> {
 
   public componentDidMount() {
     this.setUpMiniMap()
+    console.log(this.props.fetchSamples)
     this.props.fetchSamples()
   }
 

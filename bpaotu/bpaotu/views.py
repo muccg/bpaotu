@@ -738,8 +738,10 @@ def sample_images(request, lat=None, lng=None):
     lookup_table = _get_cached_item(LOOKUP_TABLE_KEY)
     img_lookup_entry = lookup_table[(lat, lng)]
 
-    response_str = ""
+    # response_str = ""
+    response_obj = []
     for index, img_url in enumerate(img_lookup_entry):
-        response_str += '<img src="/process_img/{}/{}/{}" />'.format(lat, lng, index)
+        response_obj.append('/process_img/{}/{}/{}'.format(lat, lng, index))
+        # response_str += '<img src="/process_img/{}/{}/{}" />'.format(lat, lng, index)
 
-    return HttpResponse(response_str)
+    return JsonResponse({'urls': response_obj})

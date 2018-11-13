@@ -75,8 +75,10 @@ export function executeSampleSitesSearch(filters) {
 }
 
 export function executeImageSearch(lat, lng) {
+    console.log('foobarbaz')
+
     return axios({
-        method: 'post',
+        method: 'get',
         url: window.otu_search_config.sample_images + '/' + lat + '/' + lng,
         headers: {
             'Content-Type': 'multipart/form-data'

@@ -25,5 +25,3 @@ zipstream==1.1.4
 h5py==2.7.1
 numpy==1.14.5
 celery==4.1.1
-pillow
-python-resize-image

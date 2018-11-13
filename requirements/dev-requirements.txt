@@ -3,3 +3,5 @@ coverage
 django-discover-runner
 docutils
 flake8
+pillow
+python-resize-image
