@@ -17,3 +17,4 @@ lib.sh
 yarn_cache
 bpaotu/bpaotu/frontend/node_modules
 bpaotu/bpaotu/frontend/dist
+frontend/

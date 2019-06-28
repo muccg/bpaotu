@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { get as _get, map, partial } from 'lodash'
 
-import { store } from '../init'
+import { store } from '../index'
 import '../interfaces'
 import { ckanAuthInfoEnded } from '../reducers/auth'
 

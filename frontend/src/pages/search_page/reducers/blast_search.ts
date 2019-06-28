@@ -131,12 +131,12 @@ export default handleActions(
             succeeded: status === 'complete'
           }
           if (status === 'error') {
-            newState.error = error
+            newState['error'] = error
           }
           return newState
         })(lastSubmission)
         let newAlerts: any = state.alerts
-        if (newLastSubmissionState.finished && !lastSubmission.finished) {
+        if (newLastSubmissionState['finished'] && !lastSubmission['finished']) {
           const resultUrl = action.payload.data.submission.result_url
           const BLAST_ALERT_SUCCESS = alert(
             'BLAST search executed successfully. ' +
@@ -145,7 +145,7 @@ export default handleActions(
             'success'
           )
           newAlerts = reject([state.alerts, BLAST_ALERT_IN_PROGRESS])
-          newAlerts.push(newLastSubmissionState.succeeded ? BLAST_ALERT_SUCCESS : BLAST_ALERT_ERROR)
+          newAlerts.push(newLastSubmissionState['succeeded'] ? BLAST_ALERT_SUCCESS : BLAST_ALERT_ERROR)
         }
 
         let isSubmitted: any = state.isSubmitting

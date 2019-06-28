@@ -162,16 +162,16 @@ export default handleActions(
             succeeded: status === 'ok'
           }
           if (status === 'error') {
-            newState.error = error
+            newState['error'] = error
           }
           return newState
         })(lastSubmission)
 
         let newAlerts: any = state.alerts
 
-        if (newLastSubmissionState.finished && !lastSubmission.finished) {
+        if (newLastSubmissionState['finished'] && !lastSubmission['finished']) {
           const linkToHistory = `${window.otu_search_config.galaxy_base_url}/histories/view?id=${
-            newLastSubmissionState.historyId
+            newLastSubmissionState['historyId']
           }`
           const GALAXY_ALERT_SUCCESS = alert(
             'Successfully submitted to Galaxy.' +
@@ -180,7 +180,7 @@ export default handleActions(
             'success'
           )
           newAlerts = reject(state.alerts, GALAXY_ALERT_IN_PROGRESS)
-          newAlerts.push(newLastSubmissionState.succeeded ? GALAXY_ALERT_SUCCESS : GALAXY_ALERT_ERROR)
+          newAlerts.push(newLastSubmissionState['succeeded'] ? GALAXY_ALERT_SUCCESS : GALAXY_ALERT_ERROR)
         }
         return {
           ...state,
