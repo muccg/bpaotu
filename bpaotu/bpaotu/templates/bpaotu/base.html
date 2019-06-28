@@ -2,7 +2,6 @@
 
 {% load staticfiles %}
 {% load static from staticfiles %}
-{% load render_bundle from webpack_loader %}
 
 <html lang="en">
 <head>
@@ -73,16 +72,6 @@
             'ckan_check_permissions': "{{ ckan_check_permissions_url }}"
         };
     </script>
-
-    {% if production %}
-        {% render_bundle 'runtime' %}
-        {% render_bundle 'vendors' %}
-        {% render_bundle 'main' %}
-    {% else %}
-        {% render_bundle 'runtime' attrs='crossorigin' %}
-        {% render_bundle 'vendors' attrs='crossorigin' %}
-        {% render_bundle 'main' attrs='crossorigin' %}
-    {% endif %}
 
 </body>
 </html>

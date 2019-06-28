@@ -24,8 +24,9 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+
     <script>
-      var galaxy_integration = 'True' === 'True';
+      var galaxy_integration = 'False' === 'True';
       window.otu_search_config = {
           'amplicon_endpoint': "/private/api/v1/amplicon-options",
           'taxonomy_endpoint': "/private/api/v1/taxonomy-options",
@@ -41,15 +42,14 @@
           'search_sample_sites_endpoint': "/private/api/v1/search-sample-sites",
           'required_table_headers_endpoint': "/private/api/v1/required_table_headers/",
           'contextual_csv_download_endpoint': "/contextual_csv_download_endpoint/",
-          'base_url': "/bpa/otu",
+          'base_url': "",
           'static_base_url': "/static/",
-          'galaxy_base_url': "https://usegalaxy.org.au",
+          'galaxy_base_url': "https://galaxy-aust-dev.genome.edu.au",
           'ckan_base_url': "https://data.bioplatforms.com/",
           'galaxy_integration': galaxy_integration,
-          'ckan_check_permissions': "/user/private/api/bpa/check_permissions"
+          'ckan_check_permissions': "/private/api/v1/user/check_permissions"
       };
   </script>
-
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.

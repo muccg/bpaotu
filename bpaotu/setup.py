@@ -22,7 +22,6 @@ def get_data_files():
 packages = [p.replace(".", "/") for p in sorted(find_packages())]
 package_scripts = ["manage.py"]
 package_data = get_data_files()
-package_data['bpaotu'].append('webpack-stats-prod.json')
 
 setup(name='bpaotu',
       version='1.24.4',
