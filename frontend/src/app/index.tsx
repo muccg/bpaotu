@@ -60,4 +60,9 @@ function mapDispatchToProps(dispatch) {
   )
 }
 
-export default App;
+export default (
+  withRouter(connect(
+    mapStateToProps,
+    mapDispatchToProps
+  )(App) as any)
+)
