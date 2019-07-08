@@ -12,7 +12,6 @@ script:
 - export "GIT_BRANCH=$TRAVIS_BRANCH"
 - test x"$TRAVIS_PULL_REQUEST_BRANCH" != x"" && export "GIT_BRANCH=$TRAVIS_PULL_REQUEST_BRANCH" || echo "This build is not a PR."
 - export "BRANCH_NAME=$GIT_BRANCH"
-- ./travis-build.sh
 - ./travis-prodbuild.sh
 
 env:
