@@ -11,7 +11,7 @@ if [ x"$BRANCH_NAME" != x"master" -a x"$BRANCH_NAME" != x"next_release" -a x"$BR
     exit 0
 fi
 
-docker run --rm -v $(pwd)/frontend:/frontend node:latest /frontend/prodbuild.sh
+docker run --rm -v $(pwd)/frontend:/frontend node:latest bash /frontend/prodbuild.sh
 
 ./develop.sh run-builder checkout
 ./develop.sh run-builder releasetarball
