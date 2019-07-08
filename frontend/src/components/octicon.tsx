@@ -4,7 +4,7 @@ import * as React from 'react'
 const style = {
   display: 'inline-block',
   verticalAlign: 'middle',
-  paddingTop: 8
+  paddingTop: 0
 }
 
 export default props => {
