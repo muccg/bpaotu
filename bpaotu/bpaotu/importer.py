@@ -345,9 +345,9 @@ class DataImporter:
         logger.warning("loading Soil contextual metadata")
         metadata = self.contextual_rows(AccessAMDContextualMetadata, name='amd-metadata')
         mappings = self._load_ontology(DataImporter.amd_ontologies, metadata)
-        self._session.bulk_save_objects(
-            self.contextual_row_context(
-                metadata, DataImporter.amd_ontologies, mappings, utilised_fields))
+        for obj in self.contextual_row_context(metadata, DataImporter.amd_ontologies, mappings, utilised_fields):
+            self._session.add(obj)
+            self._session.commit()
         self._session.commit()
         unused = set(t.name for t in SampleContext.__table__.columns) - utilised_fields
         if unused:
