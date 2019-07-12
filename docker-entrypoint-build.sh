@@ -25,6 +25,8 @@ if [ "$1" = 'checkout' ]; then
     exit 0
 fi
 
+ls -ltra /data/
+
 # prepare a tarball of build
 if [ "$1" = 'releasetarball' ]; then
     info "[Run] Preparing a release tarball"
@@ -74,7 +76,6 @@ if [ "$1" = 'releasetarball' ]; then
     exit 0
 fi
 
-info "[RUN]: Builtin command not provided [checkout|releasetarball]"
-info "[RUN]: $*"
+info "[RUN]: Builtin command not provided [checkout|releasetarball]" info "[RUN]: $*"
 
 exec "$@"

@@ -245,7 +245,7 @@ class DataImporter:
                     taxo_header = header[1:-1]
                     for idx, row in enumerate(csv.reader(fd, dialect='excel-tab')):
                         code = row[0]
-                        if not code_re.match(code):
+                        if not code_re.match(code) and not code.startswith('mxa_'):
                             raise Exception("invalid OTU code: {}".format(code))
                         obj = {
                             'amplicon': row[-1],
@@ -258,7 +258,7 @@ class DataImporter:
                                 'more than one amplicon in folder: {} vs {}'.format(amplicon, obj['amplicon']))
                         obj.update(zip(taxo_header, row[1:-1]))
                         yield obj
-                self.amplicon_code_names[amplicon_code] = amplicon
+                self.amplicon_code_names[amplicon_code.lower()] = amplicon
                 ImportFileLog.make_file_log(fname, file_type='Taxonomy', rows_imported=idx + 1, rows_skipped=0)
 
         logger.warning("loading taxonomies - pass 1, defining ontologies")
@@ -383,7 +383,7 @@ class DataImporter:
                         logger.info('skipping invalid sample ID: {}'.format(sample_id))
                         seen_invalid.add(sample_id)
                     continue
-                otu_id = otu_lookup.get(otu_hash(otu_code, self.amplicon_code_names[amplicon_code]))
+                otu_id = otu_lookup.get(otu_hash(otu_code, self.amplicon_code_names[amplicon_code.lower()]))
                 if otu_id is None:
                     if otu_code not in seen_unknown:
                         logger.critical('skipping unknown OTU code: {}'.format(otu_code))

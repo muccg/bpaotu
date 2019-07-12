@@ -1336,7 +1336,7 @@
   dependencies:
     "@types/react" "*"
 
-"@types/react-leaflet@^1.9.1":
+"@types/react-leaflet@^1.9.0":
   version "1.9.0"
   resolved "https://registry.yarnpkg.com/@types/react-leaflet/-/react-leaflet-1.9.0.tgz#3d702b8ad1e38c25e2b5ecdf79fa53c7705cc2da"
   integrity sha512-acYURhWtURZR+A60wkzhz1Eu7DkMpbONVXHEynVgntVLwXclbZG+ZZ+qvtq92ZvPE4DC+Rm9b4K0JQIAuC769w==
