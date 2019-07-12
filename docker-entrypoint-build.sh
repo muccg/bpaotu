@@ -33,6 +33,9 @@ if [ "$1" = 'releasetarball' ]; then
     info "BUILD_VERSION ${BUILD_VERSION}"
     info "PROJECT_SOURCE ${PROJECT_SOURCE}"
 
+    # extract frontend assets into static directory so they can be served out
+    ( cd /data/app/bpaotu/bpaotu/static/bpaotu && tar xzvf /data/frontend.tgz )
+
     cd /data/app
     pip install --upgrade -r requirements/runtime-requirements.txt
     pip install --upgrade -r requirements/biom-requirements.txt
