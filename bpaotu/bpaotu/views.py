@@ -582,17 +582,17 @@ def blast_submission(request):
 
 def otu_log(request):
     template = loader.get_template('bpaotu/otu_log.html')
-    missing_sample_ids = []
+    missing = {}
     for obj in ImportSamplesMissingMetadataLog.objects.all():
-        missing_sample_ids += obj.samples_without_metadata
+        missing[obj.reason] = obj.samples
     import_meta = ImportMetadata.objects.get()
     context = {
         'ckan_base_url': settings.CKAN_SERVER['base_url'],
         'files': ImportFileLog.objects.all(),
         'ontology_errors': ImportOntologyLog.objects.all(),
-        'missing_samples': sorted(missing_sample_ids, key=lambda x: int(x)),
         'metadata': import_meta,
     }
+    context.update(missing)
     return HttpResponse(template.render(context, request))
 
 

@@ -10,7 +10,4 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         importer = DataImporter(kwargs['base_dir'], kwargs['revision_date'])
-        importer.load_contextual_metadata()
-        otu_lookup = importer.load_taxonomies()
-        importer.load_otu_abundance(otu_lookup)
-        importer.complete()
+        importer.run()

@@ -85,6 +85,13 @@ class DataImporter:
         self._session = sessionmaker(bind=self._engine)()
         self._import_base = import_base
         self._revision_date = revision_date
+
+        self.sample_metadata_incomplete = set()
+        self.sample_non_integer = set()
+        self.sample_not_in_metadata = set()
+
+        self.otu_invalid = set()
+
         try:
             self._session.execute(DropSchema(SCHEMA, cascade=True))
         except sqlalchemy.exc.ProgrammingError:
@@ -93,6 +100,12 @@ class DataImporter:
         self._session.commit()
         Base.metadata.create_all(self._engine)
         self.ontology_init()
+
+    def run(self):
+        self.load_contextual_metadata()
+        otu_lookup = self.load_taxonomies()
+        self.load_otu_abundance(otu_lookup)
+        self.complete()
 
     def ontology_init(self):
         # set blank as an option for all ontologies, bar Environment
@@ -108,6 +121,13 @@ class DataImporter:
         self._session.commit()
 
     def complete(self):
+        def write_missing(attr):
+            ImportSamplesMissingMetadataLog(
+                reason=attr, samples=list(getattr(self, attr))).save()
+
+        write_missing("sample_metadata_incomplete")
+        write_missing("sample_non_integer")
+        write_missing("sample_not_in_metadata")
         self._write_metadata()
         self._session.close()
         self._analyze()
@@ -315,8 +335,13 @@ class DataImporter:
             return 'latitude' in row and 'longitude' in row \
                 and isinstance(row['latitude'], float) and isinstance(row['longitude'], float)
 
-        # convert into a row-like structure
-        return list([t for t in metadata.values() if has_minimum_metadata(t)])
+        rows = []
+        for entry in metadata.values():
+            if not has_minimum_metadata(entry):
+                self.sample_metadata_incomplete.add(entry['sample_id'])
+                continue
+            rows.append(entry)
+        return rows
 
     def contextual_row_context(self, metadata, ontologies, mappings, fields_used):
         for row in metadata:
@@ -360,62 +385,30 @@ class DataImporter:
         header = next(reader)
 
         assert(header == ["#OTU ID", "Sample_only", "Abundance"])
-        valid_sample_re = re.compile(r'^[0-9]+$')
-        skipped_invalid = set()
+        integer_re = re.compile(r'^[0-9]+$')
 
-        def _tuplerows():
-            seen_invalid = set()
-            seen_unknown = set()
-            for otu_code, sample_id, count in reader:
-                float_count = float(count)
-                int_count = int(float_count)
-                # make sure that fractional values don't creep in on a future ingest
-                assert(int_count - float_count == 0)
-                # strict conversion to integer, as we've got other things mixed in here
-                if not valid_sample_re.match(sample_id):
-                    if sample_id not in skipped_invalid:
-                        logger.warning('skipped non-Bioplatforms sample ID: {}'.format(sample_id))
-                        skipped_invalid.add(sample_id)
-                    continue
-                sample_id_int = int(sample_id)
-                if sample_id_int is None:
-                    if sample_id not in seen_invalid:
-                        logger.info('skipping invalid sample ID: {}'.format(sample_id))
-                        seen_invalid.add(sample_id)
-                    continue
-                otu_id = otu_lookup.get(otu_hash(otu_code, self.amplicon_code_names[amplicon_code.lower()]))
-                if otu_id is None:
-                    if otu_code not in seen_unknown:
-                        logger.critical('skipping unknown OTU code: {}'.format(otu_code))
-                        seen_unknown.add(otu_code)
-                    continue
-                yield otu_id, sample_id_int, int_count
-
-        return _tuplerows()
-
-    def _find_missing_sample_ids(self, otu_lookup):
-        def _missing_sample_ids(amplicon_code, fname):
-            have_sampleids = set([t[0] for t in self._session.query(SampleContext.id)])
-            with gzip.open(fname, 'rt') as fd:
-                entries = self._otu_abundance_rows(fd, amplicon_code, otu_lookup)
-                sample_ids = set(t[1] for t in entries)
-                for sample_id in sample_ids:
-                    if sample_id not in have_sampleids:
-                        yield sample_id
-
-        missing_sample_ids = set()
-        for amplicon_code, fname in self.amplicon_files('*.txt.gz'):
-            logger.warning("first pass, reading from: %s" % (fname))
-            missing_sample_ids |= set(_missing_sample_ids(amplicon_code, fname))
-        return missing_sample_ids
+        for otu_code, sample_id, count in reader:
+            float_count = float(count)
+            int_count = int(float_count)
+            # make sure that fractional values don't creep in on a future ingest
+            assert(int_count - float_count == 0)
+            if not integer_re.match(sample_id):
+                if sample_id not in self.sample_non_integer:
+                    logger.warning('skipped non-integer sample ID: {}'.format(sample_id))
+                    self.sample_non_integer.add(sample_id)
+                continue
+            sample_id_int = int(sample_id)
+            otu_id = otu_lookup[otu_hash(otu_code, self.amplicon_code_names[amplicon_code.lower()])]
+            yield otu_id, sample_id_int, int_count
 
     def load_otu_abundance(self, otu_lookup):
-        def _make_sample_otus(fname, amplicon_code, skip_missing):
+        def _make_sample_otus(fname, amplicon_code, present_sample_ids):
             with gzip.open(fname, 'rt') as fd:
                 tuple_rows = self._otu_abundance_rows(fd, amplicon_code, otu_lookup)
                 rows_skipped = 0
                 for entry, (otu_id, sample_id, count) in enumerate(tuple_rows):
-                    if sample_id in skip_missing:
+                    if sample_id not in present_sample_ids:
+                        self.sample_not_in_metadata.add(sample_id)
                         rows_skipped += 1
                         continue
                     yield (sample_id, otu_id, count)
@@ -424,10 +417,7 @@ class DataImporter:
 
         logger.warning('Loading OTU abundance tables')
 
-        missing_sample_ids = self._find_missing_sample_ids(otu_lookup)
-        if missing_sample_ids:
-            il = ImportSamplesMissingMetadataLog(samples_without_metadata=list(sorted(missing_sample_ids)))
-            il.save()
+        present_sample_ids = set([t[0] for t in self._session.query(SampleContext.id)])
 
         for amplicon_code, sampleotu_fname in self.amplicon_files('*.txt.gz'):
             try:
@@ -438,7 +428,7 @@ class DataImporter:
                     logger.warning("writing out OTU abundance data to CSV tempfile: %s" % fname)
                     w = csv.writer(temp_fd)
                     w.writerow(['sample_id', 'otu_id', 'count'])
-                    w.writerows(_make_sample_otus(sampleotu_fname, amplicon_code, missing_sample_ids))
+                    w.writerows(_make_sample_otus(sampleotu_fname, amplicon_code, present_sample_ids))
                 logger.warning("loading OTU abundance data from temporary CSV file")
                 try:
                     self._engine.execute(

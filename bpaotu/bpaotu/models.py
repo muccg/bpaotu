@@ -47,4 +47,5 @@ class ImportOntologyLog(models.Model):
 
 
 class ImportSamplesMissingMetadataLog(models.Model):
-    samples_without_metadata = ArrayField(models.TextField())
+    reason = models.CharField(max_length=32, unique=True)
+    samples = ArrayField(models.TextField())

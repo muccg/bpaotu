@@ -110,19 +110,45 @@
 
                 {% endfor %}
             </table>
-
-            <h2>Samples excluded due to missing metadata</h2>
+            <h2>Samples excluded: non-Bioplatforms Sample ID</h2>
             
             <table>
                 <thead>
                     <th>Sample ID</th>
                 </thead>
                 <tr><td>
-                    {% for sample_id in missing_samples %}
+                    {% for sample_id in sample_metadata_incomplete %}
+                    {{ sample_id }}
+                    {% endfor %}
+                </td></tr>
+            </table>
+
+            <h2>Samples excluded: metadata exists, but does not meet minimum standards</h2>
+            
+            <table>
+                <thead>
+                    <th>Sample ID</th>
+                </thead>
+                <tr><td>
+                    {% for sample_id in sample_metadata_incomplete %}
                     <a target="_other" href="{{ ckan_base_url }}/organization/australian-microbiome?q=bpa_id:102.100.100/{{ sample_id}}">{{ sample_id }}</a>
                     {% endfor %}
                 </td></tr>
             </table>
+
+            <h2>Samples excluded: no metadata</h2>
+            
+            <table>
+                <thead>
+                    <th>Sample ID</th>
+                </thead>
+                <tr><td>
+                    {% for sample_id in sample_not_in_metadata %}
+                    <a target="_other" href="{{ ckan_base_url }}/organization/australian-microbiome?q=bpa_id:102.100.100/{{ sample_id}}">{{ sample_id }}</a>
+                    {% endfor %}
+                </td></tr>
+            </table>
+
         </div>
     </div>
 </div>
