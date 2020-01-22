@@ -3,6 +3,7 @@ import { connect } from 'react-redux'
 import { filter as _filter } from 'lodash'
 import { bindActionCreators } from 'redux'
 import { fetchContextualDataDefinitions } from '../reducers/contextual_data_definitions'
+import { fetchAmplicons } from '../reducers/reference_data/amplicons'
 
 import { Form, FormGroup, Col, Container, Row, Input, Label, Button } from 'reactstrap'
 import { nondenoisedDataRequest } from '../api'
@@ -10,6 +11,7 @@ import { nondenoisedDataRequest } from '../api'
 class NonDenoisedPage extends React.Component<any> {
     state = {
         submitted: false,
+        selectedAmplicon: '',
         selectedSamples: [],
         matchSequence: "",
         taxonomyString: "",
@@ -21,11 +23,13 @@ class NonDenoisedPage extends React.Component<any> {
     }
 
     public componentDidMount() {
-        this.props.fetchContextualDataDefinitions()
+        this.props.fetchContextualDataDefinitions();
+        this.props.fetchAmplicons();
     }
 
     submit() {
         nondenoisedDataRequest(
+            this.state.selectedAmplicon,
             this.state.selectedSamples,
             this.state.matchSequence,
             this.state.taxonomyString)
@@ -35,7 +39,7 @@ class NonDenoisedPage extends React.Component<any> {
     }
 
     validate(state) {
-        return state['selectedSamples'] && state['selectedSamples'].length > 0;
+        return state['selectedAmplicon'] !== '' && state['selectedSamples'] && state['selectedSamples'].length > 0;
     }
 
     disabled() {
@@ -46,10 +50,16 @@ class NonDenoisedPage extends React.Component<any> {
         const sampleIDs = (this.props.sample_ids || []).map(
             (sample_id, idx) => <option value={sample_id} key={idx}>102.100.100/{sample_id}</option>
         );
-
-        const onChange = evt => {
+        const amplicons = (this.props.amplicons || []).map(
+            (amplicon, idx) => <option value={amplicon.id} key={idx}>{amplicon.value}</option>
+        );
+        const onSampleIDChange = evt => {
             const values = _filter(evt.target.options, o => o.selected).map((o: any) => o.value)
             this.setState({ selectedSamples: values })
+        };
+        const onAmpliconChange = evt => {
+            const value = evt.target.options[evt.target.selectedIndex].value;
+            this.setState({ selectedAmplicon: value })
         };
 
         if (this.state['submitted'] === true) {
@@ -74,6 +84,19 @@ class NonDenoisedPage extends React.Component<any> {
 
             <Form>
                 <FormGroup>
+                    <Label for="sample_ids">Amplicon</Label>
+                    <Input
+                        name="sample_ids"
+                        id="amplicon"
+                        type="select"
+                        value={this.state['selectedAmplicon']}
+                        onChange={onAmpliconChange}
+                    >
+                        <option value="">--</option>
+                        {amplicons}
+                    </Input>
+                </FormGroup>
+                <FormGroup>
                     <Label for="sample_ids">Sample IDs for export</Label>
                     <Input
                         name="sample_ids"
@@ -81,7 +104,7 @@ class NonDenoisedPage extends React.Component<any> {
                         type="select"
                         multiple={true}
                         value={this.state['selectedSamples']}
-                        onChange={onChange}
+                        onChange={onSampleIDChange}
                     >
                         {sampleIDs}
                     </Input>
@@ -112,13 +135,15 @@ class NonDenoisedPage extends React.Component<any> {
 
 function mapStateToProps(state) {
     return {
-        sample_ids: state.contextualDataDefinitions.sample_ids
+        sample_ids: state.contextualDataDefinitions.sample_ids,
+        amplicons: state.referenceData.amplicons.values
     }
 }
 
 function mapDispatchToProps(dispatch) {
     return bindActionCreators(
         {
+            fetchAmplicons,
             fetchContextualDataDefinitions,
         },
         dispatch

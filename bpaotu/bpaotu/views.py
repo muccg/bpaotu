@@ -45,7 +45,8 @@ from .models import (
     ImportMetadata,
     ImportFileLog,
     ImportOntologyLog,
-    ImportSamplesMissingMetadataLog)
+    ImportSamplesMissingMetadataLog,
+    NonDenoisedDataRequest)
 from .util import (
     make_timestamp,
     parse_date,
@@ -322,6 +323,12 @@ A request for non-denoised data has been received.
 
 User email: {email}
 
+Request ID:
+{id}
+
+Requested amplicon:
+{amplicon}
+
 Requested samples:
 {selected_samples}
 
@@ -336,19 +343,25 @@ Taxonomy string:
 @require_CKAN_auth
 @require_POST
 def nondenoised_request(request):
-    format_obj = {
+    attrs = {
         k: request.POST.get(k, '')
         for k in ('match_sequence', 'taxonomy_string')
     }
-    format_obj['email'] = request.ckan_data.get('email')
-    format_obj['selected_samples'] = '\n'.join(json.loads(request.POST.get('selected_samples', '[]')))
+    with OntologyInfo() as info:
+        amplicon_id = request.POST.get('selected_amplicon', '')
+        attrs['amplicon'] = info.id_to_value(OTUAmplicon, amplicon_id)
+    attrs['email'] = request.ckan_data.get('email')
+    attrs['selected_samples'] = '\n'.join(json.loads(request.POST.get('selected_samples', '[]')))
+    request = NonDenoisedDataRequest(**attrs)
+    request.save()
+    attrs['id'] = request.id
     send_mail(
-        "Australian Microbiome: Data request received",
-        ACKNOWLEDGEMENT_EMAIL_TEMPLATE.format(**format_obj),
-        "Australian Microbiome Data Requests <am-data-requests@bioplatforms.com>", [format_obj['email']])
+        "[ND#{}] Australian Microbiome: Data request received".format(request.id),
+        ACKNOWLEDGEMENT_EMAIL_TEMPLATE.format(**attrs),
+        "Australian Microbiome Data Requests <am-data-requests@bioplatforms.com>", [attrs['email']])
     send_mail(
-        "[AMI] Non-denoised data request",
-        NONDENOISED_EMAIL_TEMPLATE.format(**format_obj),
+        "[ND#{}] Non-denoised data request".format(request.id),
+        NONDENOISED_EMAIL_TEMPLATE.format(**attrs),
         "Australian Microbiome Data Requests <am-data-requests@bioplatforms.com>", [settings.NONDENOISED_REQUEST_EMAIL])
     return JsonResponse({'okay': True})
 

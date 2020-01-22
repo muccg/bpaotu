@@ -57,8 +57,9 @@ function doSearch(url, filters, options) {
   })
 }
 
-export function nondenoisedDataRequest(selectedSamples, matchSequence, taxonomyString) {
+export function nondenoisedDataRequest(selectedAmplicon, selectedSamples, matchSequence, taxonomyString) {
     const formData = new FormData()
+    formData.append('selected_amplicon', selectedAmplicon)
     formData.append('selected_samples', JSON.stringify(selectedSamples))
     formData.append('match_sequence', matchSequence)
     formData.append('taxonomy_string', taxonomyString)
