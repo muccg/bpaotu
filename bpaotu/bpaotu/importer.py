@@ -338,7 +338,8 @@ class DataImporter:
         rows = []
         for entry in metadata.values():
             if not has_minimum_metadata(entry):
-                self.sample_metadata_incomplete.add(entry['sample_id'])
+                self.sample_metadata_incomplete.add(
+                    int(entry['sample_id'].split('/')[-1]))
                 continue
             rows.append(entry)
         return rows
@@ -408,7 +409,9 @@ class DataImporter:
                 rows_skipped = 0
                 for entry, (otu_id, sample_id, count) in enumerate(tuple_rows):
                     if sample_id not in present_sample_ids:
-                        self.sample_not_in_metadata.add(sample_id)
+                        if sample_id not in self.sample_metadata_incomplete \
+                                and sample_id not in self.sample_non_integer:
+                            self.sample_not_in_metadata.add(sample_id)
                         rows_skipped += 1
                         continue
                     yield (sample_id, otu_id, count)
