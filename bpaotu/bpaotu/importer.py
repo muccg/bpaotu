@@ -86,6 +86,7 @@ class DataImporter:
         self._import_base = import_base
         self._revision_date = revision_date
 
+        # these are used exclusively for reporting back to CSIRO on the state of the ingest
         self.sample_metadata_incomplete = set()
         self.sample_non_integer = set()
         self.sample_not_in_metadata = set()
@@ -123,7 +124,8 @@ class DataImporter:
     def complete(self):
         def write_missing(attr):
             ImportSamplesMissingMetadataLog(
-                reason=attr, samples=list(getattr(self, attr))).save()
+                reason=attr,
+                samples=list(getattr(self, attr))).save()
 
         write_missing("sample_metadata_incomplete")
         write_missing("sample_non_integer")
@@ -153,11 +155,11 @@ class DataImporter:
         extensions = ('citext',)
         for extension in extensions:
             try:
-                logger.info("creating extension: %s" % extension)
-                self._engine.execute('CREATE EXTENSION %s;' % extension)
+                logger.info("creating extension: {}".format(extension))
+                self._engine.execute('CREATE EXTENSION {};'.format(extension))
             except sqlalchemy.exc.ProgrammingError as e:
                 if 'already exists' not in str(e):
-                    logger.critical("couldn't create extension: %s (%s)" % (extension, e))
+                    logger.critical("couldn't create extension: {} ({})".format(extension, e))
 
     def _analyze(self):
         logger.info("Completing ingest: analyze")
@@ -255,7 +257,7 @@ class DataImporter:
             otu_header = '#OTU ID'
             amplicon_header = 'amplicon'
             for amplicon_code, fname in self.amplicon_files('*.taxonomy.gz'):
-                logger.warning('reading taxonomy file: %s' % fname)
+                logger.warning('reading taxonomy file: {}'.format(fname))
                 amplicon = None
                 with gzip.open(fname, 'rt') as fd:
                     reader = csv.reader(fd, dialect='excel-tab')
@@ -289,7 +291,7 @@ class DataImporter:
             with tempfile.NamedTemporaryFile(mode='w', dir='/data', prefix='bpaotu-', delete=False) as temp_fd:
                 fname = temp_fd.name
                 os.chmod(fname, 0o644)
-                logger.warning("writing out taxonomy data to CSV tempfile: %s" % fname)
+                logger.warning("writing out taxonomy data to CSV tempfile: {}".format(fname))
                 w = csv.writer(temp_fd)
                 w.writerow(taxonomy_fields)
                 for _id, row in enumerate(_taxon_rows_iter(), 1):
@@ -395,7 +397,7 @@ class DataImporter:
             assert(int_count - float_count == 0)
             if not integer_re.match(sample_id):
                 if sample_id not in self.sample_non_integer:
-                    logger.warning('skipped non-integer sample ID: {}'.format(sample_id))
+                    logger.warning('[{}] skipped non-integer sample ID: {}'.format(amplicon_code, sample_id))
                     self.sample_non_integer.add(sample_id)
                 continue
             sample_id_int = int(sample_id)
@@ -423,22 +425,24 @@ class DataImporter:
         present_sample_ids = set([t[0] for t in self._session.query(SampleContext.id)])
 
         for amplicon_code, sampleotu_fname in self.amplicon_files('*.txt.gz'):
+            def l(msg):
+                logger.warning('[{}] {}'.format(amplicon_code, msg))
             try:
-                logger.warning("second pass, reading from: %s" % (sampleotu_fname))
+                l("reading from: {}".format(sampleotu_fname))
                 with tempfile.NamedTemporaryFile(mode='w', dir='/data', prefix='bpaotu-', delete=False) as temp_fd:
                     fname = temp_fd.name
                     os.chmod(fname, 0o644)
-                    logger.warning("writing out OTU abundance data to CSV tempfile: %s" % fname)
+                    l("writing out OTU abundance data to CSV tempfile: {}".format(fname))
                     w = csv.writer(temp_fd)
                     w.writerow(['sample_id', 'otu_id', 'count'])
                     w.writerows(_make_sample_otus(sampleotu_fname, amplicon_code, present_sample_ids))
-                logger.warning("loading OTU abundance data from temporary CSV file")
+                l("loading OTU abundance data into database")
                 try:
                     self._engine.execute(
                         text('''COPY otu.sample_otu from :csv CSV header''').execution_options(autocommit=True),
                         csv=fname)
                 except:  # noqa
-                    logger.critical("unable to import %s" % (sampleotu_fname))
+                    l("unable to import {}".format(sampleotu_fname))
                     traceback.print_exc()
             finally:
                 os.unlink(fname)
